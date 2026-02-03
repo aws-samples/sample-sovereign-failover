@@ -1,0 +1,2 @@
+# This directory is used for the AWS IAM Roles Anywhere signing helper Lambda Layer
+# The binary is automatically downloaded during CDK synthesis via bundling

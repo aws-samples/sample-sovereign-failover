@@ -1,0 +1,19 @@
+{
+  "name": "sync-handler",
+  "version": "1.0.0",
+  "description": "Lambda function for synchronizing counter objects across partitions",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.490.0",
+    "@aws-sdk/client-secrets-manager": "^3.490.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.131",
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
