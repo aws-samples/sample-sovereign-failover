@@ -123,6 +123,28 @@ npx cdk synth \
   -c thfRemoteAccountId=$THF_REMOTE_ACCOUNT_ID
 echo -e "${GREEN}✓ CDK synthesis complete${NC}\n"
 
+# Step 3.5: Bootstrap CDK in target accounts/regions
+echo -e "${YELLOW}Step 3.5: Bootstrapping CDK in target accounts/regions...${NC}"
+
+if [[ "$DEPLOY_STACK" == "fra" || "$DEPLOY_STACK" == "both" ]]; then
+  echo -e "  Bootstrapping FRA account ($FRA_REMOTE_ACCOUNT_ID) in eu-central-1..."
+  npx cdk bootstrap aws://$FRA_REMOTE_ACCOUNT_ID/eu-central-1 \
+    -c fraRemoteAccountId=$FRA_REMOTE_ACCOUNT_ID \
+    -c thfRemoteAccountId=$THF_REMOTE_ACCOUNT_ID
+  echo -e "${GREEN}  ✓ FRA account bootstrapped${NC}"
+fi
+
+if [[ "$DEPLOY_STACK" == "thf" || "$DEPLOY_STACK" == "both" ]]; then
+  echo -e "  Bootstrapping THF account ($THF_REMOTE_ACCOUNT_ID) in eusc-de-east-1..."
+  npx cdk bootstrap aws://$THF_REMOTE_ACCOUNT_ID/eusc-de-east-1 \
+    --profile thf \
+    -c fraRemoteAccountId=$FRA_REMOTE_ACCOUNT_ID \
+    -c thfRemoteAccountId=$THF_REMOTE_ACCOUNT_ID
+  echo -e "${GREEN}  ✓ THF account bootstrapped${NC}"
+fi
+
+echo -e "${GREEN}✓ CDK bootstrap complete${NC}\n"
+
 # Step 4: Deploy FRA Stack
 if [[ "$DEPLOY_STACK" == "fra" || "$DEPLOY_STACK" == "both" ]]; then
   echo -e "${YELLOW}Step 4: Deploying FRA Stack to eu-central-1...${NC}"
