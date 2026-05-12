@@ -76,6 +76,22 @@ echo -e "${YELLOW}Step 1: Installing root dependencies...${NC}"
 npm install
 echo -e "${GREEN}✓ Root dependencies installed${NC}\n"
 
+# Step 1.5: Download aws_signing_helper binary for Lambda Layer
+echo -e "${YELLOW}Step 1.5: Downloading aws_signing_helper binary...${NC}"
+SIGNING_HELPER_DIR="lambda/signing-helper-layer/bin"
+SIGNING_HELPER_PATH="$SIGNING_HELPER_DIR/aws_signing_helper"
+SIGNING_HELPER_URL="https://rolesanywhere.amazonaws.com/releases/1.8.2/X86_64/Linux/Amzn2023/aws_signing_helper"
+
+if [ -f "$SIGNING_HELPER_PATH" ]; then
+  echo -e "${GREEN}  ✓ aws_signing_helper already exists, skipping download${NC}\n"
+else
+  mkdir -p "$SIGNING_HELPER_DIR"
+  echo -e "  Downloading from $SIGNING_HELPER_URL..."
+  curl -sS -o "$SIGNING_HELPER_PATH" "$SIGNING_HELPER_URL"
+  chmod +x "$SIGNING_HELPER_PATH"
+  echo -e "${GREEN}  ✓ aws_signing_helper downloaded and made executable${NC}\n"
+fi
+
 # Step 2: Build Lambda functions
 echo -e "${YELLOW}Step 2: Building Lambda functions...${NC}"
 
