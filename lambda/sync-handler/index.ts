@@ -182,7 +182,7 @@ async function syncLocalToRemote(key: string): Promise<void> {
 
 /**
  * Sync a counter object from remote bucket to local bucket
- * Used when triggered by API Gateway (FRA → THF direction)
+ * Used when triggered by API Gateway (eu-central → eusc-de direction)
  * @param key - S3 object key
  */
 async function syncRemoteToLocal(key: string): Promise<void> {
@@ -242,7 +242,7 @@ function isApiGatewayEvent(event: any): event is APIGatewayProxyEvent {
 
 /**
  * Handle S3 event trigger (local → remote sync)
- * This is the existing THF → FRA flow
+ * This is the existing eusc-de → eu-central flow
  */
 async function handleS3Event(event: S3Event): Promise<void> {
   console.log('Processing S3 event trigger (local → remote sync)');
@@ -257,8 +257,8 @@ async function handleS3Event(event: S3Event): Promise<void> {
       console.log(`Processing S3 event for: ${bucket}/${key}`);
       
       // Loop prevention: only sync objects matching our region code
-      // FRA Sync Lambda only syncs counter-FRA.json
-      // THF Sync Lambda only syncs counter-THF.json
+      // eu-central Sync Lambda only syncs counter-eu-central.json
+      // eusc-de Sync Lambda only syncs counter-eusc-de.json
       const expectedKey = `counter-${REGION_CODE}.json`;
       
       if (key !== expectedKey) {
@@ -277,14 +277,14 @@ async function handleS3Event(event: S3Event): Promise<void> {
 
 /**
  * Handle API Gateway event trigger (remote → local sync)
- * This is the new FRA → THF flow
+ * This is the new eu-central → eusc-de flow
  */
 async function handleApiGatewayEvent(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
   console.log('Processing API Gateway event trigger (remote → local sync)');
   
   try {
     // Parse the request body to get the S3 event details
-    // The FRA S3 bucket will send the S3 event as the request body
+    // The eu-central S3 bucket will send the S3 event as the request body
     let s3Event: S3Event;
     
     if (event.body) {
@@ -305,8 +305,8 @@ async function handleApiGatewayEvent(event: APIGatewayProxyEvent): Promise<APIGa
         console.log(`Processing remote S3 event for: ${key}`);
         
         // Loop prevention: only sync objects NOT matching our region code
-        // THF Sync Lambda should only sync counter-FRA.json (from FRA)
-        // It should NOT sync counter-THF.json (that would create a loop)
+        // eusc-de Sync Lambda should only sync counter-eu-central.json (from eu-central)
+        // It should NOT sync counter-eusc-de.json (that would create a loop)
         const ourKey = `counter-${REGION_CODE}.json`;
         
         if (key === ourKey) {
@@ -338,8 +338,8 @@ async function handleApiGatewayEvent(event: APIGatewayProxyEvent): Promise<APIGa
 /**
  * Lambda handler for S3 event notifications and API Gateway triggers
  * Supports bidirectional synchronization:
- * - S3 event trigger: Read from local bucket, write to remote bucket (THF → FRA)
- * - API Gateway trigger: Read from remote bucket, write to local bucket (FRA → THF)
+ * - S3 event trigger: Read from local bucket, write to remote bucket (eusc-de → eu-central)
+ * - API Gateway trigger: Read from remote bucket, write to local bucket (eu-central → eusc-de)
  * @param event - S3 event or API Gateway event
  */
 export async function handler(event: S3Event | APIGatewayProxyEvent): Promise<void | APIGatewayProxyResult> {

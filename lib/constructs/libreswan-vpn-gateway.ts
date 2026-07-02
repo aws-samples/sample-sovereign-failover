@@ -15,7 +15,7 @@ export interface LibreswanVpnGatewayProps {
   instanceName: string;
   
   /**
-   * Remote VPN Gateway public IP (FRA VPN Gateway tunnel endpoint)
+   * Remote VPN Gateway public IP (eu-central VPN Gateway tunnel endpoint)
    * This will be configured later via user-data or SSM
    */
   remoteVpnGatewayIp?: string;
@@ -78,7 +78,7 @@ export class LibreswanVpnGateway extends Construct {
     
     // NO SSH ACCESS - Use AWS Systems Manager Session Manager for administrative access
     // The instance has AmazonSSMManagedInstanceCore policy attached for SSM access
-    // To connect: aws ssm start-session --target <instance-id> --region eusc-de-east-1 --profile thf
+    // To connect: aws ssm start-session --target <instance-id> --region eusc-de-east-1 --profile eusc-de
     
     // ICMP removed - not required for VPN operation
     // If needed for troubleshooting, temporarily add via AWS Console with specific source IP
@@ -129,7 +129,7 @@ export class LibreswanVpnGateway extends Construct {
       '# Actual configuration will be applied by setup script after VPN connection is created',
       'cat > /etc/ipsec.d/aws-vpn.conf << EOF',
       '# Placeholder - will be configured by setup-vpn.sh script',
-      '# Connection will be established after FRA VPN Gateway tunnel IPs are discovered',
+      '# Connection will be established after eu-central VPN Gateway tunnel IPs are discovered',
       'EOF',
       '',
       '# Enable and start IPsec service',

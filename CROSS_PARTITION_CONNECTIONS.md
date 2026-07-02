@@ -67,7 +67,7 @@ VPN operates at the network layer and is partition-agnostic, simply establishing
 
 ## Method: S3 Access Points with VPC-Only Access
 
-S3 Access Points provide a dedicated endpoint for accessing an S3 bucket, and can be restricted to VPC-only access to eliminate public internet exposure. When combined with a VPN connection, a Lambda in one regions's VPC can route traffic to an S3 Access Point in the remote regions's VPC over the private network.
+S3 Access Points provide a dedicated endpoint for accessing an S3 bucket, and can be restricted to VPC-only access to eliminate internet exposure. When combined with a VPN connection, a Lambda in one regions's VPC can route traffic to an S3 Access Point in the remote regions's VPC over the private network.
 
 ```typescript
 // S3 Access Point restricted to VPC (CDK)
@@ -118,12 +118,12 @@ await fetch(`https://${REMOTE_API_ENDPOINT}/${REMOTE_BUCKET}/${key}`, {
 
 **Cross-partition applicability:** ✅ Applicable
 
-This pattern works across partitions because it decouples authentication from the partition boundary. The API Gateway handles local IAM authentication to S3 on behalf of the caller, while the cross-partition caller only needs an API key, a simple shared secret that is not tied to any partition's IAM system. The HTTPS call can traverse either the public internet or a VPN tunnel, making this a straightforward and maintainable approach for unidirectional data writes.
+This pattern works across partitions because it decouples authentication from the partition boundary. The API Gateway handles local IAM authentication to S3 on behalf of the caller, while the cross-partition caller only needs an API key, a simple shared secret that is not tied to any partition's IAM system. The HTTPS call can traverse either the internet or a VPN tunnel, making this a straightforward and maintainable approach for unidirectional data writes.
 
 
 ## Method: API Gateway + Lambda Trigger (Bidirectional Sync)
 
-This pattern uses an event-driven architecture for bidirectional synchronization between partitions. An S3 event in the source partition triggers a Forwarder Lambda, which makes an HTTPS POST with an API key to a Sync API Gateway in the target partition. The target API Gateway invokes a Sync Lambda that performs the actual data synchronization. This is the pattern implemented in this demo for the FRA → THF direction.
+This pattern uses an event-driven architecture for bidirectional synchronization between partitions. An S3 event in the source partition triggers a Forwarder Lambda, which makes an HTTPS POST with an API key to a Sync API Gateway in the target partition. The target API Gateway invokes a Sync Lambda that performs the actual data synchronization. This is the pattern implemented in this demo for the eu-central → eusc-de direction.
 
 ```
 Architecture:
@@ -131,19 +131,19 @@ Source Partition: S3 Event → Forwarder Lambda → HTTPS + API Key → Target A
 ```
 
 ```typescript
-// Forwarder Lambda (FRA)
+// Forwarder Lambda (eu-central)
 export async function handler(event: S3Event): Promise<void> {
-  await fetch(THF_SYNC_API_URL, {
+  await fetch(EUSC_DE_SYNC_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': THF_SYNC_API_KEY,
+      'x-api-key': EUSC_DE_SYNC_API_KEY,
     },
     body: JSON.stringify(event),
   });
 }
 
-// Sync Lambda (THF) - handles both S3 events and API Gateway events
+// Sync Lambda (eusc-de) - handles both S3 events and API Gateway events
 export async function handler(event: S3Event | APIGatewayProxyEvent): Promise<void> {
   if (isS3Event(event)) {
     await syncLocalToRemote(event);  
@@ -152,9 +152,9 @@ export async function handler(event: S3Event | APIGatewayProxyEvent): Promise<vo
   }
 }
 
-// API Gateway configuration (THF)
+// API Gateway configuration (eusc-de)
 const syncApi = new apigateway.RestApi(this, 'SyncApi', {
-  restApiName: 'THF Sync API',
+  restApiName: 'eusc-de Sync API',
   apiKeySourceType: apigateway.ApiKeySourceType.HEADER,
 });
 
@@ -167,7 +167,7 @@ usagePlan.addApiKey(apiKey);
 
 **Cross-partition applicability:** ✅ Applicable
 
-This pattern can avoid cross-partition IAM entirely by using API key authentication for the cross-partition hop. The Forwarder Lambda makes an HTTPS request with an API key header. The Sync Lambda in the target partition then operates with its own local IAM role for S3 access (or uses IAM Roles Anywhere for reading from the remote partition). API Gateway provides built-in rate limiting, monitoring, and error handling. This both works over the public internet as well as over VPN.
+This pattern can avoid cross-partition IAM entirely by using API key authentication for the cross-partition hop. The Forwarder Lambda makes an HTTPS request with an API key header. The Sync Lambda in the target partition then operates with its own local IAM role for S3 access (or uses IAM Roles Anywhere for reading from the remote partition). API Gateway provides built-in rate limiting, monitoring, and error handling. This both works over the internet as well as over VPN.
 
 
 ## Method: IAM Roles Anywhere with X.509 Certificates
@@ -294,7 +294,7 @@ const api = new apigateway.RestApi(this, 'PrivateApi', {
 
 **Cross-partition applicability:** ✅ Applicable
 
-This pattern keeps all traffic off the public internet by combining VPN (for cross-partition network connectivity) with PrivateLink (for private access to the API Gateway within the target VPC). It works across partitions because the authentication to the API Gateway can use API keys or IAM authorization local to the target partition, while the VPN handles the network routing. The trade-off is higher cost and complexity, requiring both a VPN tunnel and VPC Endpoint infrastructure, making it most appropriate when regulatory or compliance requirements mandate that no traffic traverses the public internet.
+This pattern keeps all traffic off the internet by combining VPN (for cross-partition network connectivity) with PrivateLink (for private access to the API Gateway within the target VPC). It works across partitions because the authentication to the API Gateway can use API keys or IAM authorization local to the target partition, while the VPN handles the network routing. The trade-off is higher cost and complexity, requiring both a VPN tunnel and VPC Endpoint infrastructure, making it most appropriate when regulatory or compliance requirements mandate that no traffic traverses the internet.
 
 
 ## Additional Resources

@@ -3,27 +3,27 @@ import https from 'https';
 import http from 'http';
 
 // Environment variables
-const THF_SYNC_API_URL = process.env.THF_SYNC_API_URL || '';
-const THF_SYNC_API_KEY = process.env.THF_SYNC_API_KEY || '';
+const EUSC_DE_SYNC_API_URL = process.env.EUSC_DE_SYNC_API_URL || '';
+const EUSC_DE_SYNC_API_KEY = process.env.EUSC_DE_SYNC_API_KEY || '';
 const REGION_CODE = process.env.REGION_CODE || '';
 
 /**
- * Forward S3 event to THF Sync API Gateway
- * This Lambda is triggered by FRA S3 bucket events and forwards them to THF
+ * Forward S3 event to eusc-de Sync API Gateway
+ * This Lambda is triggered by eu-central S3 bucket events and forwards them to eusc-de
  * Uses API Key authentication since IAM doesn't work across aws and aws-eusc partitions
- * @param event - S3 event from FRA bucket
+ * @param event - S3 event from eu-central bucket
  */
 export async function handler(event: S3Event): Promise<void> {
   console.log('API Gateway Forwarder invoked with event:', JSON.stringify(event, null, 2));
   
   // Validate environment variables
-  if (!THF_SYNC_API_URL) {
-    console.error('Missing THF_SYNC_API_URL environment variable');
+  if (!EUSC_DE_SYNC_API_URL) {
+    console.error('Missing EUSC_DE_SYNC_API_URL environment variable');
     return;
   }
   
-  if (!THF_SYNC_API_KEY) {
-    console.error('Missing THF_SYNC_API_KEY environment variable');
+  if (!EUSC_DE_SYNC_API_KEY) {
+    console.error('Missing EUSC_DE_SYNC_API_KEY environment variable');
     return;
   }
   
@@ -33,7 +33,7 @@ export async function handler(event: S3Event): Promise<void> {
   }
   
   // Loop prevention: only forward events for our region's counter
-  // FRA forwarder only forwards counter-FRA.json events
+  // eu-central forwarder only forwards counter-eu-central.json events
   for (const record of event.Records) {
     const key = decodeURIComponent(record.s3.object.key.replace(/\+/g, ' '));
     const expectedKey = `counter-${REGION_CODE}.json`;
@@ -44,23 +44,23 @@ export async function handler(event: S3Event): Promise<void> {
     }
   }
   
-  // Forward the S3 event to THF Sync API Gateway
+  // Forward the S3 event to eusc-de Sync API Gateway
   try {
     await forwardToApiGateway(event);
-    console.log('Successfully forwarded S3 event to THF Sync API Gateway');
+    console.log('Successfully forwarded S3 event to eusc-de Sync API Gateway');
   } catch (error) {
-    console.error('Error forwarding S3 event to THF Sync API Gateway:', error);
+    console.error('Error forwarding S3 event to eusc-de Sync API Gateway:', error);
     throw error; // Throw to trigger Lambda retry
   }
 }
 
 /**
- * Make HTTP POST request to THF Sync API Gateway with API Key authentication
+ * Make HTTP POST request to eusc-de Sync API Gateway with API Key authentication
  * @param event - S3 event to forward
  */
 async function forwardToApiGateway(event: S3Event): Promise<void> {
   return new Promise((resolve, reject) => {
-    const url = new URL(THF_SYNC_API_URL);
+    const url = new URL(EUSC_DE_SYNC_API_URL);
     const postData = JSON.stringify(event);
     
     const options = {
@@ -71,7 +71,7 @@ async function forwardToApiGateway(event: S3Event): Promise<void> {
       headers: {
         'Content-Type': 'application/json',
         'Content-Length': Buffer.byteLength(postData),
-        'x-api-key': THF_SYNC_API_KEY,
+        'x-api-key': EUSC_DE_SYNC_API_KEY,
       },
     };
     

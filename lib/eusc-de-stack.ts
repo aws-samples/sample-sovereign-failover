@@ -6,32 +6,32 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
-import { THF_CONFIG } from './shared/config';
+import { EUSC_DE_CONFIG } from './shared/config';
 import { StackConfig } from './shared/types';
 import { LibreswanVpnGateway } from './constructs/libreswan-vpn-gateway';
 
-export interface ThfStackProps extends cdk.StackProps {
+export interface EuscDeStackProps extends cdk.StackProps {
   remoteAccountId: string;
-  fraApiGatewayId?: string;
-  fraCustomerGatewayId?: string;
+  euCentralApiGatewayId?: string;
+  euCentralCustomerGatewayId?: string;
 }
 
-export class ThfStack extends cdk.Stack {
+export class EuscDeStack extends cdk.Stack {
   public readonly bucket: s3.Bucket;
   public readonly apiGateway: apigateway.RestApi;
 
-  constructor(scope: Construct, id: string, props: ThfStackProps) {
+  constructor(scope: Construct, id: string, props: EuscDeStackProps) {
     super(scope, id, props);
 
     // Build complete stack configuration
     const config: StackConfig = {
-      ...THF_CONFIG,
+      ...EUSC_DE_CONFIG,
       remoteAccountId: props.remoteAccountId,
     };
 
     // Create VPC with public and private subnets
-    // Using 172.16.0.0/16 to avoid overlap with FRA VPC (10.0.0.0/16)
-    const vpc = new ec2.Vpc(this, 'ThfVpc', {
+    // Using 172.16.0.0/16 to avoid overlap with eu-central VPC (10.0.0.0/16)
+    const vpc = new ec2.Vpc(this, 'EuscDeVpc', {
       ipAddresses: ec2.IpAddresses.cidr('172.16.0.0/16'),
       maxAzs: 2,
       natGateways: 1,
@@ -49,20 +49,20 @@ export class ThfStack extends cdk.Stack {
       ],
     });
 
-    // Note: THF VPN Gateway removed - will use Libreswan customer VPN gateway instead
-    // FRA partition has the AWS-managed VPN Gateway
-    // THF partition will have a Libreswan EC2 instance that connects to FRA VPN Gateway
+    // Note: eusc-de VPN Gateway removed - will use Libreswan customer VPN gateway instead
+    // eu-central partition has the AWS-managed VPN Gateway
+    // eusc-de partition will have a Libreswan EC2 instance that connects to eu-central VPN Gateway
 
     // Create Libreswan VPN gateway instance
     new LibreswanVpnGateway(this, 'LibreswanVpnGateway', {
       vpc: vpc,
-      instanceName: 'THF-Libreswan-VPN-Gateway',
+      instanceName: 'eusc-de-Libreswan-VPN-Gateway',
       localCidr: vpc.vpcCidrBlock,
-      remoteCidr: '10.0.0.0/16', // FRA VPC CIDR - placeholder, will be configured by script
+      remoteCidr: '10.0.0.0/16', // eu-central VPC CIDR - placeholder, will be configured by script
     });
 
     // Create S3 bucket for counter storage
-    this.bucket = new s3.Bucket(this, 'ThfCounterBucket', {
+    this.bucket = new s3.Bucket(this, 'EuscDeCounterBucket', {
       versioned: true,
       encryption: s3.BucketEncryption.S3_MANAGED,
       removalPolicy: cdk.RemovalPolicy.DESTROY, // For demo purposes
@@ -77,14 +77,14 @@ export class ThfStack extends cdk.Stack {
     // Export bucket name for cross-stack reference
     new cdk.CfnOutput(this, 'BucketName', {
       value: this.bucket.bucketName,
-      description: 'S3 bucket name for THF counter storage',
-      exportName: 'ThfBucketName',
+      description: 'S3 bucket name for eusc-de counter storage',
+      exportName: 'EuscDeBucketName',
     });
 
     // Create IAM execution role for Page Handler Lambda
     const pageHandlerRole = new iam.Role(this, 'PageHandlerRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      description: 'Execution role for THF Page Handler Lambda',
+      description: 'Execution role for eusc-de Page Handler Lambda',
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
@@ -106,19 +106,19 @@ export class ThfStack extends cdk.Stack {
         REGION_CODE: config.regionCode,
         BUCKET_NAME: this.bucket.bucketName,
       },
-      description: `Page Handler Lambda for ${config.regionName} (${config.regionCode})`,
+      description: `Page Handler Lambda for ${config.regionName}`,
     });
 
     // Export Lambda function ARN
     new cdk.CfnOutput(this, 'PageHandlerLambdaArn', {
       value: pageHandlerLambda.functionArn,
       description: 'ARN of the Page Handler Lambda function',
-      exportName: 'ThfPageHandlerLambdaArn',
+      exportName: 'EuscDePageHandlerLambdaArn',
     });
 
     // Create REST API Gateway
     // Note: Using REGIONAL endpoint type as EDGE is not supported in sovereign cloud regions
-    this.apiGateway = new apigateway.RestApi(this, 'ThfApiGateway', {
+    this.apiGateway = new apigateway.RestApi(this, 'EuscDeApiGateway', {
       restApiName: `${config.regionCode}-Sovereign-Failover-API`,
       description: `API Gateway for ${config.regionName} sovereign failover demo`,
       endpointConfiguration: {
@@ -163,13 +163,13 @@ export class ThfStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApiGatewayUrl', {
       value: this.apiGateway.url,
       description: 'API Gateway endpoint URL',
-      exportName: 'ThfApiGatewayUrl',
+      exportName: 'EuscDeApiGatewayUrl',
     });
 
     // Create IAM execution role for Sync Lambda
     const syncLambdaRole = new iam.Role(this, 'SyncLambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
-      description: 'Execution role for THF Sync Lambda',
+      description: 'Execution role for eusc-de Sync Lambda',
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
@@ -177,8 +177,8 @@ export class ThfStack extends cdk.Stack {
 
     // Grant S3 read and write permissions for local bucket
     // Sync Lambda needs to:
-    // - Read local counter (for THF → FRA sync)
-    // - Write remote counter received from FRA (for FRA → THF sync via API Gateway)
+    // - Read local counter (for eusc-de → eu-central sync)
+    // - Write remote counter received from eu-central (for eu-central → eusc-de sync via API Gateway)
     this.bucket.grantReadWrite(syncLambdaRole);
 
     // Grant Secrets Manager read permissions for certificate retrieval
@@ -186,7 +186,7 @@ export class ThfStack extends cdk.Stack {
       new iam.PolicyStatement({
         effect: iam.Effect.ALLOW,
         actions: ['secretsmanager:GetSecretValue'],
-        resources: [`arn:aws-eusc:secretsmanager:${config.region}:${this.account}:secret:ThfSyncLambdaCertificate-*`],
+        resources: [`arn:aws-eusc:secretsmanager:${config.region}:${this.account}:secret:EuscDeSyncLambdaCertificate-*`],
       })
     );
 
@@ -202,10 +202,10 @@ export class ThfStack extends cdk.Stack {
     });
 
     // Create Sync Lambda function (no VPC needed)
-    // Configuration verified for THF → FRA unidirectional synchronization:
-    // - REMOTE_ROLE_ARN points to FRA account
-    // - REMOTE_REGION is eu-central-1 (FRA)
-    // - REMOTE_BUCKET points to FRA bucket
+    // Configuration verified for eusc-de → eu-central unidirectional synchronization:
+    // - REMOTE_ROLE_ARN points to eu-central account
+    // - REMOTE_REGION is eu-central-1
+    // - REMOTE_BUCKET points to eu-central bucket
     // - REMOTE_TRUST_ANCHOR_ARN and REMOTE_PROFILE_ARN will be updated by deployment scripts
     const syncLambda = new lambda.Function(this, 'SyncLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -217,16 +217,16 @@ export class ThfStack extends cdk.Stack {
       memorySize: 256,
       environment: {
         LOCAL_BUCKET: this.bucket.bucketName,
-        REMOTE_BUCKET: `fra-counter-bucket-${config.remoteAccountId}`, // Placeholder - update with actual bucket name
-        REMOTE_ROLE_ARN: `arn:aws:iam::${config.remoteAccountId}:role/FraRolesAnywhereS3WriteRole`, // Role in remote (FRA) account
-        REMOTE_PROFILE_ARN: 'PLACEHOLDER-UPDATE-AFTER-FRA-DEPLOYMENT', // Will be provided by FRA stack output
-        REMOTE_TRUST_ANCHOR_ARN: 'PLACEHOLDER-UPDATE-AFTER-FRA-DEPLOYMENT', // Will be provided by FRA stack output
+        REMOTE_BUCKET: `eu-central-counter-bucket-${config.remoteAccountId}`, // Placeholder - update with actual bucket name
+        REMOTE_ROLE_ARN: `arn:aws:iam::${config.remoteAccountId}:role/EuCentralRolesAnywhereS3WriteRole`, // Role in remote (eu-central) account
+        REMOTE_PROFILE_ARN: 'PLACEHOLDER-UPDATE-AFTER-EU-CENTRAL-DEPLOYMENT', // Will be provided by eu-central stack output
+        REMOTE_TRUST_ANCHOR_ARN: 'PLACEHOLDER-UPDATE-AFTER-EU-CENTRAL-DEPLOYMENT', // Will be provided by eu-central stack output
         REGION_CODE: config.regionCode,
         REMOTE_REGION: config.remoteRegion,
-        CERTIFICATE_SECRET_NAME: 'ThfSyncLambdaCertificate',
+        CERTIFICATE_SECRET_NAME: 'EuscDeSyncLambdaCertificate',
         AWS_SIGNING_HELPER_PATH: '/opt/bin/aws_signing_helper',
       },
-      description: `Sync Lambda for ${config.regionName} (${config.regionCode}) using IAM Roles Anywhere`,
+      description: `Sync Lambda for ${config.regionName} using IAM Roles Anywhere`,
     });
 
     // Connect S3 event notification to Sync Lambda
@@ -244,11 +244,11 @@ export class ThfStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'SyncLambdaRoleArn', {
       value: syncLambdaRole.roleArn,
       description: 'ARN of the Sync Lambda execution role',
-      exportName: 'ThfSyncLambdaRoleArn',
+      exportName: 'EuscDeSyncLambdaRoleArn',
     });
 
-    // Create REST API Gateway for triggering Sync Lambda from FRA S3 events
-    const syncApiGateway = new apigateway.RestApi(this, 'ThfSyncApiGateway', {
+    // Create REST API Gateway for triggering Sync Lambda from eu-central S3 events
+    const syncApiGateway = new apigateway.RestApi(this, 'EuscDeSyncApiGateway', {
       restApiName: `${config.regionCode}-Sync-API`,
       description: `API Gateway for triggering ${config.regionName} Sync Lambda from remote partition`,
       endpointConfiguration: {
@@ -270,16 +270,16 @@ export class ThfStack extends cdk.Stack {
 
     // Create API Key for cross-partition authentication
     // Since IAM doesn't work across aws and aws-eusc partitions, we use API Key
-    const syncApiKey = new apigateway.ApiKey(this, 'ThfSyncApiKey', {
+    const syncApiKey = new apigateway.ApiKey(this, 'EuscDeSyncApiKey', {
       apiKeyName: `${config.regionCode}-Sync-API-Key`,
-      description: 'API Key for FRA Forwarder Lambda to authenticate with THF Sync API Gateway',
+      description: 'API Key for eu-central Forwarder Lambda to authenticate with eusc-de Sync API Gateway',
       enabled: true,
     });
 
     // Create Usage Plan
-    const syncUsagePlan = new apigateway.UsagePlan(this, 'ThfSyncUsagePlan', {
+    const syncUsagePlan = new apigateway.UsagePlan(this, 'EuscDeSyncUsagePlan', {
       name: `${config.regionCode}-Sync-Usage-Plan`,
-      description: 'Usage plan for THF Sync API Gateway',
+      description: 'Usage plan for eusc-de Sync API Gateway',
       apiStages: [
         {
           api: syncApiGateway,
@@ -317,25 +317,25 @@ export class ThfStack extends cdk.Stack {
       ],
     });
 
-    // Export API Key value for FRA Forwarder Lambda
+    // Export API Key value for eu-central Forwarder Lambda
     new cdk.CfnOutput(this, 'SyncApiKeyValue', {
       value: syncApiKey.keyId,
-      description: 'API Key ID for THF Sync API Gateway (retrieve value from console)',
-      exportName: 'ThfSyncApiKeyId',
+      description: 'API Key ID for eusc-de Sync API Gateway (retrieve value from console)',
+      exportName: 'EuscDeSyncApiKeyId',
     });
 
-    // Export Sync API Gateway URL for FRA S3 event notification
+    // Export Sync API Gateway URL for eu-central S3 event notification
     new cdk.CfnOutput(this, 'SyncApiGatewayUrl', {
       value: syncApiGateway.url,
       description: 'API Gateway endpoint URL for triggering Sync Lambda',
-      exportName: 'ThfSyncApiGatewayUrl',
+      exportName: 'EuscDeSyncApiGatewayUrl',
     });
 
     // Export Sync API Gateway ID for reference
     new cdk.CfnOutput(this, 'SyncApiGatewayId', {
       value: syncApiGateway.restApiId,
       description: 'API Gateway ID for Sync Lambda trigger',
-      exportName: 'ThfSyncApiGatewayId',
+      exportName: 'EuscDeSyncApiGatewayId',
     });
   }
 }

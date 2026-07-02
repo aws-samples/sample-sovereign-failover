@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Script to build and deploy all stacks for the Sovereign Failover Demo
-# This script builds Lambda functions, synthesizes CDK, and deploys both FRA and THF stacks
+# This script builds Lambda functions, synthesizes CDK, and deploys both eu-central and eusc-de stacks
 
 set -e
 
@@ -27,23 +27,23 @@ while [[ $# -gt 0 ]]; do
       shift 2
       ;;
     --help)
-      echo "Usage: $0 [OPTIONS] <FRA_ACCOUNT_ID> <THF_ACCOUNT_ID>"
+      echo "Usage: $0 [OPTIONS] <EU_CENTRAL_ACCOUNT_ID> <EUSC_DE_ACCOUNT_ID>"
       echo ""
       echo "Options:"
-      echo "  --stack <fra|thf|both>   Deploy only FRA, only THF, or both stacks (default: both)"
-      echo "  --help                   Show this help message"
+      echo "  --stack <eu-central|eusc-de|both>   Deploy only eu-central, only eusc-de, or both stacks (default: both)"
+      echo "  --help                              Show this help message"
       echo ""
       echo "Examples:"
-      echo "  $0 <FRA_ACCOUNT_ID> <THF_ACCOUNT_ID>                    # Deploy both stacks"
-      echo "  $0 --stack fra <FRA_ACCOUNT_ID> <THF_ACCOUNT_ID>        # Deploy only FRA"
-      echo "  $0 --stack thf <FRA_ACCOUNT_ID> <THF_ACCOUNT_ID>        # Deploy only THF"
+      echo "  $0 <EU_CENTRAL_ACCOUNT_ID> <EUSC_DE_ACCOUNT_ID>                        # Deploy both stacks"
+      echo "  $0 --stack eu-central <EU_CENTRAL_ACCOUNT_ID> <EUSC_DE_ACCOUNT_ID>     # Deploy only eu-central"
+      echo "  $0 --stack eusc-de <EU_CENTRAL_ACCOUNT_ID> <EUSC_DE_ACCOUNT_ID>        # Deploy only eusc-de"
       exit 0
       ;;
     *)
-      if [ -z "$FRA_REMOTE_ACCOUNT_ID" ]; then
-        FRA_REMOTE_ACCOUNT_ID=$1
-      elif [ -z "$THF_REMOTE_ACCOUNT_ID" ]; then
-        THF_REMOTE_ACCOUNT_ID=$1
+      if [ -z "$EU_CENTRAL_REMOTE_ACCOUNT_ID" ]; then
+        EU_CENTRAL_REMOTE_ACCOUNT_ID=$1
+      elif [ -z "$EUSC_DE_REMOTE_ACCOUNT_ID" ]; then
+        EUSC_DE_REMOTE_ACCOUNT_ID=$1
       fi
       shift
       ;;
@@ -51,24 +51,24 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate stack option
-if [[ ! "$DEPLOY_STACK" =~ ^(fra|thf|both)$ ]]; then
+if [[ ! "$DEPLOY_STACK" =~ ^(eu-central|eusc-de|both)$ ]]; then
   echo -e "${RED}Error: Invalid --stack option: $DEPLOY_STACK${NC}"
-  echo -e "Valid options: fra, thf, both"
+  echo -e "Valid options: eu-central, eusc-de, both"
   exit 1
 fi
 
 # Check for required context parameters
-if [ -z "$FRA_REMOTE_ACCOUNT_ID" ] || [ -z "$THF_REMOTE_ACCOUNT_ID" ]; then
+if [ -z "$EU_CENTRAL_REMOTE_ACCOUNT_ID" ] || [ -z "$EUSC_DE_REMOTE_ACCOUNT_ID" ]; then
   echo -e "${RED}Error: Required account IDs not provided${NC}"
-  echo -e "Usage: $0 [--stack <fra|thf|both>] <FRA_ACCOUNT_ID> <THF_ACCOUNT_ID>"
+  echo -e "Usage: $0 [--stack <eu-central|eusc-de|both>] <EU_CENTRAL_ACCOUNT_ID> <EUSC_DE_ACCOUNT_ID>"
   echo -e "Run '$0 --help' for more information"
   exit 1
 fi
 
 echo -e "${GREEN}Configuration:${NC}"
 echo -e "  Deploy Stack: $DEPLOY_STACK"
-echo -e "  FRA Account ID: $FRA_REMOTE_ACCOUNT_ID"
-echo -e "  THF Account ID: $THF_REMOTE_ACCOUNT_ID"
+echo -e "  eu-central Account ID: $EU_CENTRAL_REMOTE_ACCOUNT_ID"
+echo -e "  eusc-de Account ID: $EUSC_DE_REMOTE_ACCOUNT_ID"
 echo -e ""
 
 # Step 1: Install root dependencies
@@ -119,67 +119,67 @@ echo -e "${GREEN}✓ CDK code compiled${NC}\n"
 # Step 3: Synthesize CDK
 echo -e "${YELLOW}Step 3: Synthesizing CDK stacks...${NC}"
 npx cdk synth \
-  -c fraRemoteAccountId=$FRA_REMOTE_ACCOUNT_ID \
-  -c thfRemoteAccountId=$THF_REMOTE_ACCOUNT_ID
+  -c euCentralRemoteAccountId=$EU_CENTRAL_REMOTE_ACCOUNT_ID \
+  -c euscDeRemoteAccountId=$EUSC_DE_REMOTE_ACCOUNT_ID
 echo -e "${GREEN}✓ CDK synthesis complete${NC}\n"
 
 # Step 3.5: Bootstrap CDK in target accounts/regions
 echo -e "${YELLOW}Step 3.5: Bootstrapping CDK in target accounts/regions...${NC}"
 
-if [[ "$DEPLOY_STACK" == "fra" || "$DEPLOY_STACK" == "both" ]]; then
-  echo -e "  Bootstrapping FRA account ($FRA_REMOTE_ACCOUNT_ID) in eu-central-1..."
-  npx cdk bootstrap aws://$FRA_REMOTE_ACCOUNT_ID/eu-central-1 \
-    -c fraRemoteAccountId=$FRA_REMOTE_ACCOUNT_ID \
-    -c thfRemoteAccountId=$THF_REMOTE_ACCOUNT_ID
-  echo -e "${GREEN}  ✓ FRA account bootstrapped${NC}"
+if [[ "$DEPLOY_STACK" == "eu-central" || "$DEPLOY_STACK" == "both" ]]; then
+  echo -e "  Bootstrapping eu-central account ($EU_CENTRAL_REMOTE_ACCOUNT_ID) in eu-central-1..."
+  npx cdk bootstrap aws://$EU_CENTRAL_REMOTE_ACCOUNT_ID/eu-central-1 \
+    -c euCentralRemoteAccountId=$EU_CENTRAL_REMOTE_ACCOUNT_ID \
+    -c euscDeRemoteAccountId=$EUSC_DE_REMOTE_ACCOUNT_ID
+  echo -e "${GREEN}  ✓ eu-central account bootstrapped${NC}"
 fi
 
-if [[ "$DEPLOY_STACK" == "thf" || "$DEPLOY_STACK" == "both" ]]; then
-  echo -e "  Bootstrapping THF account ($THF_REMOTE_ACCOUNT_ID) in eusc-de-east-1..."
-  npx cdk bootstrap aws://$THF_REMOTE_ACCOUNT_ID/eusc-de-east-1 \
-    --profile thf \
-    -c fraRemoteAccountId=$FRA_REMOTE_ACCOUNT_ID \
-    -c thfRemoteAccountId=$THF_REMOTE_ACCOUNT_ID
-  echo -e "${GREEN}  ✓ THF account bootstrapped${NC}"
+if [[ "$DEPLOY_STACK" == "eusc-de" || "$DEPLOY_STACK" == "both" ]]; then
+  echo -e "  Bootstrapping eusc-de account ($EUSC_DE_REMOTE_ACCOUNT_ID) in eusc-de-east-1..."
+  npx cdk bootstrap aws://$EUSC_DE_REMOTE_ACCOUNT_ID/eusc-de-east-1 \
+    --profile eusc-de \
+    -c euCentralRemoteAccountId=$EU_CENTRAL_REMOTE_ACCOUNT_ID \
+    -c euscDeRemoteAccountId=$EUSC_DE_REMOTE_ACCOUNT_ID
+  echo -e "${GREEN}  ✓ eusc-de account bootstrapped${NC}"
 fi
 
 echo -e "${GREEN}✓ CDK bootstrap complete${NC}\n"
 
-# Step 4: Deploy FRA Stack
-if [[ "$DEPLOY_STACK" == "fra" || "$DEPLOY_STACK" == "both" ]]; then
-  echo -e "${YELLOW}Step 4: Deploying FRA Stack to eu-central-1...${NC}"
-  npx cdk deploy FraStack \
+# Step 4: Deploy eu-central Stack
+if [[ "$DEPLOY_STACK" == "eu-central" || "$DEPLOY_STACK" == "both" ]]; then
+  echo -e "${YELLOW}Step 4: Deploying eu-central Stack to eu-central-1...${NC}"
+  npx cdk deploy eu-central-stack \
     --require-approval never \
-    -c fraRemoteAccountId=$FRA_REMOTE_ACCOUNT_ID \
-    -c thfRemoteAccountId=$THF_REMOTE_ACCOUNT_ID
+    -c euCentralRemoteAccountId=$EU_CENTRAL_REMOTE_ACCOUNT_ID \
+    -c euscDeRemoteAccountId=$EUSC_DE_REMOTE_ACCOUNT_ID
 
   if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ FRA Stack deployed successfully${NC}\n"
+    echo -e "${GREEN}✓ eu-central Stack deployed successfully${NC}\n"
   else
-    echo -e "${RED}✗ FRA Stack deployment failed${NC}"
+    echo -e "${RED}✗ eu-central Stack deployment failed${NC}"
     exit 1
   fi
 else
-  echo -e "${BLUE}Skipping FRA Stack deployment (--stack=$DEPLOY_STACK)${NC}\n"
+  echo -e "${BLUE}Skipping eu-central Stack deployment (--stack=$DEPLOY_STACK)${NC}\n"
 fi
 
-# Step 5: Deploy THF Stack
-if [[ "$DEPLOY_STACK" == "thf" || "$DEPLOY_STACK" == "both" ]]; then
-  echo -e "${YELLOW}Step 5: Deploying THF Stack to eusc-de-east-1...${NC}"
-  npx cdk deploy ThfStack \
-    --profile thf \
+# Step 5: Deploy eusc-de Stack
+if [[ "$DEPLOY_STACK" == "eusc-de" || "$DEPLOY_STACK" == "both" ]]; then
+  echo -e "${YELLOW}Step 5: Deploying eusc-de Stack to eusc-de-east-1...${NC}"
+  npx cdk deploy eusc-de-stack \
+    --profile eusc-de \
     --require-approval never \
-    -c fraRemoteAccountId=$FRA_REMOTE_ACCOUNT_ID \
-    -c thfRemoteAccountId=$THF_REMOTE_ACCOUNT_ID
+    -c euCentralRemoteAccountId=$EU_CENTRAL_REMOTE_ACCOUNT_ID \
+    -c euscDeRemoteAccountId=$EUSC_DE_REMOTE_ACCOUNT_ID
 
   if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✓ THF Stack deployed successfully${NC}\n"
+    echo -e "${GREEN}✓ eusc-de Stack deployed successfully${NC}\n"
   else
-    echo -e "${RED}✗ THF Stack deployment failed${NC}"
+    echo -e "${RED}✗ eusc-de Stack deployment failed${NC}"
     exit 1
   fi
 else
-  echo -e "${BLUE}Skipping THF Stack deployment (--stack=$DEPLOY_STACK)${NC}\n"
+  echo -e "${BLUE}Skipping eusc-de Stack deployment (--stack=$DEPLOY_STACK)${NC}\n"
 fi
 
 # Step 5.5: Issue certificates and create Trust Anchors
@@ -187,23 +187,23 @@ if [[ "$DEPLOY_STACK" == "both" ]]; then
   echo -e "${YELLOW}Step 5.5: Setting up IAM Roles Anywhere Trust Anchors...${NC}"
   
   # Check if certificates exist in Secrets Manager
-  FRA_CERT_EXISTS=$(aws secretsmanager describe-secret \
+  EU_CENTRAL_CERT_EXISTS=$(aws secretsmanager describe-secret \
     --region eu-central-1 \
-    --secret-id FraSyncLambdaCertificate \
+    --secret-id EuCentralSyncLambdaCertificate \
     --query 'Name' \
     --output text 2>/dev/null || echo "")
 
-  THF_CERT_EXISTS=$(aws secretsmanager describe-secret \
+  EUSC_DE_CERT_EXISTS=$(aws secretsmanager describe-secret \
     --region eusc-de-east-1 \
-    --profile thf \
-    --secret-id ThfSyncLambdaCertificate \
+    --profile eusc-de \
+    --secret-id EuscDeSyncLambdaCertificate \
     --query 'Name' \
     --output text 2>/dev/null || echo "")
 
-  if [ -n "$FRA_CERT_EXISTS" ] && [ -n "$THF_CERT_EXISTS" ]; then
+  if [ -n "$EU_CENTRAL_CERT_EXISTS" ] && [ -n "$EUSC_DE_CERT_EXISTS" ]; then
     echo -e "${GREEN}✓ Certificates already exist in both partitions${NC}"
-    echo -e "  FRA Certificate: $FRA_CERT_EXISTS"
-    echo -e "  THF Certificate: $THF_CERT_EXISTS"
+    echo -e "  eu-central Certificate: $EU_CENTRAL_CERT_EXISTS"
+    echo -e "  eusc-de Certificate: $EUSC_DE_CERT_EXISTS"
     echo -e "\n${YELLOW}Would you like to regenerate the certificates and Trust Anchors? (y/n)${NC}"
     read -r cert_response
     
@@ -212,11 +212,11 @@ if [[ "$DEPLOY_STACK" == "both" ]]; then
       SKIP_CERT_GENERATION=true
     fi
   else
-    if [ -z "$FRA_CERT_EXISTS" ]; then
-      echo -e "${YELLOW}⚠ FRA certificate not found${NC}"
+    if [ -z "$EU_CENTRAL_CERT_EXISTS" ]; then
+      echo -e "${YELLOW}⚠ eu-central certificate not found${NC}"
     fi
-    if [ -z "$THF_CERT_EXISTS" ]; then
-      echo -e "${YELLOW}⚠ THF certificate not found${NC}"
+    if [ -z "$EUSC_DE_CERT_EXISTS" ]; then
+      echo -e "${YELLOW}⚠ eusc-de certificate not found${NC}"
     fi
     
     echo -e "\n${YELLOW}Issuing X.509 certificates and creating Trust Anchors...${NC}"
@@ -227,17 +227,17 @@ if [[ "$DEPLOY_STACK" == "both" ]]; then
   if [ "$SKIP_CERT_GENERATION" != "true" ]; then
     if [ -f "./scripts/issue-certificates.sh" ]; then
       ./scripts/issue-certificates.sh \
-        --fra-profile default \
-        --thf-profile thf \
-        --fra-region eu-central-1 \
-        --thf-region eusc-de-east-1
+        --eu-central-profile default \
+        --eusc-de-profile eusc-de \
+        --eu-central-region eu-central-1 \
+        --eusc-de-region eusc-de-east-1
       
       if [ $? -eq 0 ]; then
         echo -e "\n${GREEN}✓ Certificates issued and Trust Anchors created${NC}\n"
       else
         echo -e "\n${RED}✗ Certificate issuance failed${NC}"
         echo -e "${YELLOW}You can issue certificates manually later by running:${NC}"
-        echo -e "  ${BLUE}./scripts/issue-certificates.sh --fra-profile default --thf-profile thf${NC}\n"
+        echo -e "  ${BLUE}./scripts/issue-certificates.sh --eu-central-profile default --eusc-de-profile eusc-de${NC}\n"
         exit 1
       fi
     else
@@ -264,80 +264,80 @@ fi
 
 # Step 5.7: Configure API Key for bidirectional sync
 if [[ "$DEPLOY_STACK" == "both" ]]; then
-  echo -e "${YELLOW}Step 5.7: Configuring API Key for bidirectional sync (FRA → THF)...${NC}"
+  echo -e "${YELLOW}Step 5.7: Configuring API Key for bidirectional sync (eu-central → eusc-de)...${NC}"
   
-  # Get THF API Key ID from CloudFormation outputs
-  echo -e "  Retrieving THF Sync API Key..."
-  THF_API_KEY_ID=$(aws cloudformation describe-stacks \
+  # Get eusc-de API Key ID from CloudFormation outputs
+  echo -e "  Retrieving eusc-de Sync API Key..."
+  EUSC_DE_API_KEY_ID=$(aws cloudformation describe-stacks \
     --region eusc-de-east-1 \
-    --profile thf \
-    --stack-name ThfStack \
+    --profile eusc-de \
+    --stack-name eusc-de-stack \
     --query 'Stacks[0].Outputs[?OutputKey==`SyncApiKeyValue`].OutputValue' \
     --output text)
   
-  if [ -z "$THF_API_KEY_ID" ]; then
-    echo -e "${RED}Error: Could not retrieve THF API Key ID from CloudFormation outputs${NC}"
+  if [ -z "$EUSC_DE_API_KEY_ID" ]; then
+    echo -e "${RED}Error: Could not retrieve eusc-de API Key ID from CloudFormation outputs${NC}"
     echo -e "${YELLOW}You can configure the API key manually later using the README instructions${NC}\n"
   else
-    echo -e "  THF API Key ID: $THF_API_KEY_ID"
+    echo -e "  eusc-de API Key ID: $EUSC_DE_API_KEY_ID"
     
     # Get the actual API Key value
     echo -e "  Retrieving API Key value..."
-    THF_API_KEY=$(aws apigateway get-api-key \
+    EUSC_DE_API_KEY=$(aws apigateway get-api-key \
       --region eusc-de-east-1 \
-      --profile thf \
-      --api-key $THF_API_KEY_ID \
+      --profile eusc-de \
+      --api-key $EUSC_DE_API_KEY_ID \
       --include-value \
       --query 'value' \
       --output text)
     
-    if [ -z "$THF_API_KEY" ]; then
+    if [ -z "$EUSC_DE_API_KEY" ]; then
       echo -e "${RED}Error: Could not retrieve API Key value${NC}"
       echo -e "${YELLOW}You can configure the API key manually later using the README instructions${NC}\n"
     else
       echo -e "  ${GREEN}✓ API Key retrieved${NC}"
       
-      # Get THF Sync API Gateway URL
-      echo -e "  Retrieving THF Sync API Gateway URL..."
-      THF_SYNC_API_URL=$(aws cloudformation describe-stacks \
+      # Get eusc-de Sync API Gateway URL
+      echo -e "  Retrieving eusc-de Sync API Gateway URL..."
+      EUSC_DE_SYNC_API_URL=$(aws cloudformation describe-stacks \
         --region eusc-de-east-1 \
-        --profile thf \
-        --stack-name ThfStack \
+        --profile eusc-de \
+        --stack-name eusc-de-stack \
         --query 'Stacks[0].Outputs[?OutputKey==`SyncApiGatewayUrl`].OutputValue' \
         --output text)
       
-      if [ -z "$THF_SYNC_API_URL" ]; then
-        echo -e "${RED}Error: Could not retrieve THF Sync API Gateway URL${NC}"
+      if [ -z "$EUSC_DE_SYNC_API_URL" ]; then
+        echo -e "${RED}Error: Could not retrieve eusc-de Sync API Gateway URL${NC}"
         echo -e "${YELLOW}You can configure the API key manually later using the README instructions${NC}\n"
       else
-        echo -e "  THF Sync API URL: $THF_SYNC_API_URL"
+        echo -e "  eusc-de Sync API URL: $EUSC_DE_SYNC_API_URL"
         
-        # Get FRA Forwarder Lambda function name
-        echo -e "  Retrieving FRA Forwarder Lambda function name..."
-        FRA_FORWARDER_LAMBDA=$(aws lambda list-functions \
+        # Get eu-central Forwarder Lambda function name
+        echo -e "  Retrieving eu-central Forwarder Lambda function name..."
+        EU_CENTRAL_FORWARDER_LAMBDA=$(aws lambda list-functions \
           --region eu-central-1 \
-          --query "Functions[?starts_with(FunctionName, 'FraStack-ForwarderLambda')].FunctionName" \
+          --query "Functions[?starts_with(FunctionName, 'eu-central-stack-ForwarderLambda')].FunctionName" \
           --output text)
         
-        if [ -z "$FRA_FORWARDER_LAMBDA" ]; then
-          echo -e "${RED}Error: Could not find FRA Forwarder Lambda function${NC}"
+        if [ -z "$EU_CENTRAL_FORWARDER_LAMBDA" ]; then
+          echo -e "${RED}Error: Could not find eu-central Forwarder Lambda function${NC}"
           echo -e "${YELLOW}You can configure the API key manually later using the README instructions${NC}\n"
         else
-          echo -e "  FRA Forwarder Lambda: $FRA_FORWARDER_LAMBDA"
+          echo -e "  eu-central Forwarder Lambda: $EU_CENTRAL_FORWARDER_LAMBDA"
           
-          # Update FRA Forwarder Lambda environment variables
-          echo -e "  Updating FRA Forwarder Lambda environment variables..."
+          # Update eu-central Forwarder Lambda environment variables
+          echo -e "  Updating eu-central Forwarder Lambda environment variables..."
           aws lambda update-function-configuration \
             --region eu-central-1 \
-            --function-name $FRA_FORWARDER_LAMBDA \
-            --environment "Variables={THF_SYNC_API_URL=$THF_SYNC_API_URL,THF_SYNC_API_KEY=$THF_API_KEY,REGION_CODE=FRA}" \
+            --function-name $EU_CENTRAL_FORWARDER_LAMBDA \
+            --environment "Variables={EUSC_DE_SYNC_API_URL=$EUSC_DE_SYNC_API_URL,EUSC_DE_SYNC_API_KEY=$EUSC_DE_API_KEY,REGION_CODE=eu-central}" \
             --output text > /dev/null
           
           if [ $? -eq 0 ]; then
-            echo -e "  ${GREEN}✓ FRA Forwarder Lambda configured with API Key${NC}\n"
-            echo -e "${GREEN}Bidirectional sync (FRA → THF) is now configured!${NC}\n"
+            echo -e "  ${GREEN}✓ eu-central Forwarder Lambda configured with API Key${NC}\n"
+            echo -e "${GREEN}Bidirectional sync (eu-central → eusc-de) is now configured!${NC}\n"
           else
-            echo -e "${RED}Error: Failed to update FRA Forwarder Lambda${NC}"
+            echo -e "${RED}Error: Failed to update eu-central Forwarder Lambda${NC}"
             echo -e "${YELLOW}You can configure the API key manually later using the README instructions${NC}\n"
           fi
         fi
@@ -351,18 +351,18 @@ fi
 # Step 6: Get stack outputs
 echo -e "${YELLOW}Step 6: Retrieving stack outputs...${NC}\n"
 
-echo -e "${GREEN}FRA Stack Outputs:${NC}"
+echo -e "${GREEN}eu-central Stack Outputs:${NC}"
 aws cloudformation describe-stacks \
   --region eu-central-1 \
-  --stack-name FraStack \
+  --stack-name eu-central-stack \
   --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl` || OutputKey==`BucketName` || OutputKey==`TrustAnchorArn` || OutputKey==`RolesAnywhereProfileArn`].[OutputKey,OutputValue]' \
   --output table
 
-echo -e "\n${GREEN}THF Stack Outputs:${NC}"
+echo -e "\n${GREEN}eusc-de Stack Outputs:${NC}"
 aws cloudformation describe-stacks \
   --region eusc-de-east-1 \
-  --profile thf \
-  --stack-name ThfStack \
+  --profile eusc-de \
+  --stack-name eusc-de-stack \
   --query 'Stacks[0].Outputs[?OutputKey==`ApiGatewayUrl` || OutputKey==`BucketName` || OutputKey==`TrustAnchorArn` || OutputKey==`RolesAnywhereProfileArn`].[OutputKey,OutputValue]' \
   --output table
 
@@ -407,16 +407,16 @@ else
   echo -e "  1. ${YELLOW}(Optional)${NC} Run ${YELLOW}./scripts/setup-vpn.sh${NC} to establish the VPN connection"
   echo -e "  2. ${YELLOW}(Optional)${NC} Run ${YELLOW}./scripts/update-sync-lambdas.sh${NC} to update Lambda environment variables"
   echo -e "  3. ${YELLOW}(Optional)${NC} Run ${YELLOW}./scripts/check-vpn.sh${NC} to verify VPN status"
-  echo -e "  4. Test the FRA endpoint by visiting the FRA API Gateway URL"
-  echo -e "  5. Test the THF endpoint by visiting the THF API Gateway URL"
+  echo -e "  4. Test the eu-central endpoint by visiting the eu-central API Gateway URL"
+  echo -e "  5. Test the eusc-de endpoint by visiting the eusc-de API Gateway URL"
   echo -e "  6. Verify counter synchronization between partitions\n"
 fi
 
 echo -e "${YELLOW}Useful Commands:${NC}"
-echo -e "  Issue certificates: ${BLUE}./scripts/issue-certificates.sh --fra-profile default --thf-profile thf${NC}"
+echo -e "  Issue certificates: ${BLUE}./scripts/issue-certificates.sh --eu-central-profile default --eusc-de-profile eusc-de${NC}"
 echo -e "  Check VPN status: ${BLUE}./scripts/check-vpn.sh${NC}"
 echo -e "  Update Sync Lambdas: ${BLUE}./scripts/update-sync-lambdas.sh${NC}"
-echo -e "  Check FRA stack: ${BLUE}aws cloudformation describe-stacks --region eu-central-1 --stack-name FraStack${NC}"
-echo -e "  Check THF stack: ${BLUE}aws cloudformation describe-stacks --region eusc-de-east-1 --profile thf --stack-name ThfStack${NC}"
-echo -e "  View FRA Sync logs: ${BLUE}aws logs tail /aws/lambda/FraStack-SyncLambda --follow --region eu-central-1${NC}"
-echo -e "  View THF Sync logs: ${BLUE}aws logs tail /aws/lambda/ThfStack-SyncLambda --follow --region eusc-de-east-1 --profile thf${NC}\n"
+echo -e "  Check eu-central stack: ${BLUE}aws cloudformation describe-stacks --region eu-central-1 --stack-name eu-central-stack${NC}"
+echo -e "  Check eusc-de stack: ${BLUE}aws cloudformation describe-stacks --region eusc-de-east-1 --profile eusc-de --stack-name eusc-de-stack${NC}"
+echo -e "  View eu-central Sync logs: ${BLUE}aws logs tail /aws/lambda/eu-central-stack-SyncLambda --follow --region eu-central-1${NC}"
+echo -e "  View eusc-de Sync logs: ${BLUE}aws logs tail /aws/lambda/eusc-de-stack-SyncLambda --follow --region eusc-de-east-1 --profile eusc-de${NC}\n"

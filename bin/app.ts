@@ -1,52 +1,52 @@
 #!/usr/bin/env node
 import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
-import { FraStack } from '../lib/fra-stack';
-import { ThfStack } from '../lib/thf-stack';
-import { FRA_CONFIG, THF_CONFIG } from '../lib/shared/config';
+import { EuCentralStack } from '../lib/eu-central-stack';
+import { EuscDeStack } from '../lib/eusc-de-stack';
+import { EU_CENTRAL_CONFIG, EUSC_DE_CONFIG } from '../lib/shared/config';
 
 const app = new cdk.App();
 
 // Get remote account IDs from CDK context
-const fraRemoteAccountId = app.node.tryGetContext('fraRemoteAccountId');
-const thfRemoteAccountId = app.node.tryGetContext('thfRemoteAccountId');
+const euCentralRemoteAccountId = app.node.tryGetContext('euCentralRemoteAccountId');
+const euscDeRemoteAccountId = app.node.tryGetContext('euscDeRemoteAccountId');
 
 // Validate required context parameters
-if (!fraRemoteAccountId) {
+if (!euCentralRemoteAccountId) {
   throw new Error(
-    'Context parameter "fraRemoteAccountId" is required. ' +
-    'Provide it via -c fraRemoteAccountId=<THF_ACCOUNT_ID>'
+    'Context parameter "euCentralRemoteAccountId" is required. ' +
+    'Provide it via -c euCentralRemoteAccountId=<EUSC_DE_ACCOUNT_ID>'
   );
 }
-if (!thfRemoteAccountId) {
+if (!euscDeRemoteAccountId) {
   throw new Error(
-    'Context parameter "thfRemoteAccountId" is required. ' +
-    'Provide it via -c thfRemoteAccountId=<FRA_ACCOUNT_ID>'
+    'Context parameter "euscDeRemoteAccountId" is required. ' +
+    'Provide it via -c euscDeRemoteAccountId=<EU_CENTRAL_ACCOUNT_ID>'
   );
 }
 
-// Create FRA Stack
-const fraStack = new FraStack(app, 'FraStack', {
+// Create eu-central Stack
+const euCentralStack = new EuCentralStack(app, 'eu-central-stack', {
   env: {
-    region: FRA_CONFIG.region,
+    region: EU_CENTRAL_CONFIG.region,
   },
-  description: 'Frankfurt (FRA) stack for Sovereign Failover Demo',
-  remoteAccountId: fraRemoteAccountId, // THF account ID
+  description: 'eu-central stack for Sovereign Failover Demo',
+  remoteAccountId: euCentralRemoteAccountId, // eusc-de account ID
 });
 
-// Create THF Stack with cross-stack references from FRA
+// Create eusc-de Stack with cross-stack references from eu-central
 // Note: We need to manually pass the Customer Gateway ID since cross-region exports don't work
-// The user will need to deploy FRA first, get the Customer Gateway ID from outputs, and pass it as context
-const fraCustomerGatewayId = app.node.tryGetContext('fraCustomerGatewayId');
+// The user will need to deploy eu-central first, get the Customer Gateway ID from outputs, and pass it as context
+const euCentralCustomerGatewayId = app.node.tryGetContext('euCentralCustomerGatewayId');
 
-const thfStack = new ThfStack(app, 'ThfStack', {
+const euscDeStack = new EuscDeStack(app, 'eusc-de-stack', {
   env: {
-    region: THF_CONFIG.region,
+    region: EUSC_DE_CONFIG.region,
   },
-  description: 'Brandenburg (THF) stack for Sovereign Failover Demo',
-  remoteAccountId: thfRemoteAccountId, // FRA account ID
-  fraApiGatewayId: fraCustomerGatewayId ? fraStack.apiGateway.restApiId : undefined,
-  fraCustomerGatewayId: fraCustomerGatewayId,
+  description: 'eusc-de stack for Sovereign Failover Demo',
+  remoteAccountId: euscDeRemoteAccountId, // eu-central account ID
+  euCentralApiGatewayId: euCentralCustomerGatewayId ? euCentralStack.apiGateway.restApiId : undefined,
+  euCentralCustomerGatewayId: euCentralCustomerGatewayId,
 });
 
 app.synth();

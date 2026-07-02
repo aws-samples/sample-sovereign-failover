@@ -6,10 +6,10 @@
  * Configuration for a CDK stack deployment
  */
 export interface StackConfig {
-  /** Human-readable region name (e.g., "Frankfurt" or "Brandenburg") */
+  /** Human-readable region name (e.g., "eu-central" or "eusc-de") */
   regionName: string;
   
-  /** Region code identifier (e.g., "FRA" or "THF") */
+  /** Region code identifier (e.g., "eu-central" or "eusc-de") */
   regionCode: string;
   
   /** AWS region for deployment */
@@ -40,7 +40,7 @@ export interface PageHandlerEnv {
   /** Region name for display */
   REGION_NAME: string;
   
-  /** Region code (FRA or THF) */
+  /** Region code (eu-central or eusc-de) */
   REGION_CODE: string;
   
   /** S3 bucket name for counters */
@@ -60,6 +60,6 @@ export interface SyncLambdaEnv {
   /** ARN of cross-account role in remote partition */
   REMOTE_ROLE_ARN: string;
   
-  /** Region code (FRA or THF) */
+  /** Region code (eu-central or eusc-de) */
   REGION_CODE: string;
 }

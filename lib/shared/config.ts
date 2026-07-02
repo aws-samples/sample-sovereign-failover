@@ -1,21 +1,21 @@
 import { StackConfig } from './types';
 
 /**
- * Configuration for Frankfurt (FRA) stack
+ * Configuration for eu-central stack
  */
-export const FRA_CONFIG: Omit<StackConfig, 'remoteAccountId'> = {
-  regionName: 'Frankfurt',
-  regionCode: 'FRA',
+export const EU_CENTRAL_CONFIG: Omit<StackConfig, 'remoteAccountId'> = {
+  regionName: 'eu-central',
+  regionCode: 'eu-central',
   region: 'eu-central-1',
   remoteRegion: 'eusc-de-east-1',
 };
 
 /**
- * Configuration for Brandenburg (THF) stack
+ * Configuration for eusc-de stack
  */
-export const THF_CONFIG: Omit<StackConfig, 'remoteAccountId'> = {
-  regionName: 'Brandenburg',
-  regionCode: 'THF',
+export const EUSC_DE_CONFIG: Omit<StackConfig, 'remoteAccountId'> = {
+  regionName: 'eusc-de',
+  regionCode: 'eusc-de',
   region: 'eusc-de-east-1',
   remoteRegion: 'eu-central-1',
 };

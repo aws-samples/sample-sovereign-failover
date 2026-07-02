@@ -8,7 +8,7 @@ const REGION_CODE = process.env.REGION_CODE || 'UNK';
 const BUCKET_NAME = process.env.BUCKET_NAME || '';
 
 // Determine remote region code
-const REMOTE_REGION_CODE = REGION_CODE === 'FRA' ? 'THF' : 'FRA';
+const REMOTE_REGION_CODE = REGION_CODE === 'eu-central' ? 'eusc-de' : 'eu-central';
 
 interface CounterObject {
   count: number;
@@ -17,7 +17,7 @@ interface CounterObject {
 
 /**
  * Read counter value from S3
- * @param regionCode - Region code (FRA or THF)
+ * @param regionCode - Region code (eu-central or eusc-de)
  * @returns Counter value, or 0 if not found
  */
 async function readCounter(regionCode: string): Promise<number> {
@@ -50,7 +50,7 @@ async function readCounter(regionCode: string): Promise<number> {
 
 /**
  * Write counter value to S3
- * @param regionCode - Region code (FRA or THF)
+ * @param regionCode - Region code (eu-central or eusc-de)
  * @param count - Counter value to write
  */
 async function writeCounter(regionCode: string, count: number): Promise<void> {
@@ -81,9 +81,9 @@ function generateHTML(params: {
 }): string {
   const { regionName, localCounter, remoteCounter } = params;
   
-  // Determine which counter is FRA and which is THF
-  const fraCounter = REGION_CODE === 'FRA' ? localCounter : remoteCounter;
-  const thfCounter = REGION_CODE === 'THF' ? localCounter : remoteCounter;
+  // Determine which counter is eu-central and which is eusc-de
+  const euCentralCounter = REGION_CODE === 'eu-central' ? localCounter : remoteCounter;
+  const euscDeCounter = REGION_CODE === 'eusc-de' ? localCounter : remoteCounter;
   
   return `<!DOCTYPE html>
 <html lang="en">
@@ -152,14 +152,14 @@ function generateHTML(params: {
     
     <div class="counter-grid">
       <div class="counter-card">
-        <h3>Frankfurt (FRA)</h3>
-        <div class="counter-value">${fraCounter}</div>
+        <h3>eu-central</h3>
+        <div class="counter-value">${euCentralCounter}</div>
         <p>Page Loads</p>
       </div>
       
       <div class="counter-card">
-        <h3>Brandenburg (THF)</h3>
-        <div class="counter-value">${thfCounter}</div>
+        <h3>eusc-de</h3>
+        <div class="counter-value">${euscDeCounter}</div>
         <p>Page Loads</p>
       </div>
     </div>

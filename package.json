@@ -11,8 +11,8 @@
     "test": "jest",
     "cdk": "cdk",
     "synth": "cdk synth",
-    "deploy:fra": "cdk deploy FraStack",
-    "deploy:thf": "cdk deploy ThfStack",
+    "deploy:eu-central": "cdk deploy eu-central-stack",
+    "deploy:eusc-de": "cdk deploy eusc-de-stack",
     "deploy:all": "cdk deploy --all",
     "diff": "cdk diff",
     "destroy:all": "cdk destroy --all"
